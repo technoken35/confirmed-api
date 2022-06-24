@@ -1,0 +1,21 @@
+{
+  "name": "nevada-dmv-watcher",
+  "version": "1.0.0",
+  "description": "Node.js on Docker",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "chromium": "^3.0.3",
+    "dotenv": "16.0.0",
+    "moment": "^2.29.3",
+    "selenium-webdriver": "^4.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.16"
+  }
+}
