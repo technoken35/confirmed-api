@@ -1,6 +1,7 @@
 import {Browser, Builder, By, until} from 'selenium-webdriver';
-import {LOCATION_MAP, NV_DMV_BASE_URL, SERVICE_MAP} from "./constants/index.js";
+import {BRANCH_MAP, NV_DMV_BASE_URL, SERVICE_MAP} from "./constants/index.js";
 import {sleep} from "./helpers/index.js";
+import axios from "axios";
 
 export default class NevadaDmvApi {
 
@@ -39,8 +40,8 @@ export default class NevadaDmvApi {
         console.log('click branch bruh')
         try{
             await this.driver.manage().window().maximize();
-            // const branch = await this.driver.findElement(By.xpath(`//input[@aria-labelledby='${LOCATION_MAP[branchName]}']`));
-            const branch = await this.driver.wait(until.elementLocated(By.xpath(`//input[@aria-labelledby='${LOCATION_MAP[branchName]}']`)), 20000, 'Timed out after 20 seconds', 4000);
+            // const branch = await this.driver.findElement(By.xpath(`//input[@aria-labelledby='${BRANCH_MAP[branchName]}']`));
+            const branch = await this.driver.wait(until.elementLocated(By.xpath(`//input[@aria-labelledby='${BRANCH_MAP[branchName]}']`)), 20000, 'Timed out after 20 seconds', 4000);
 
             this.driver.executeScript('arguments[0].click()', branch);
 
@@ -80,7 +81,6 @@ export default class NevadaDmvApi {
             if (!dayElement){
                 dayElement = this.driver.wait(until.elementLocated(By.xpath(`//*[text()='${day}']`)));
             }
-            // const dayButton = await this.driver.executeScript('return arguments[0].parentNode.parentNode', dayElement);
 
             const dayButton = await this.driver.executeScript('return arguments[0].parentNode.parentNode', dayElement);
 
@@ -134,6 +134,7 @@ export default class NevadaDmvApi {
                        console.warn(e)
 
                        timeSlots = null;
+
                        continue;
                    }
 
@@ -201,26 +202,48 @@ export default class NevadaDmvApi {
        return await this.driver.manage().getCookies();
    }
 
-   async getServices(){
+   async getBranchesWithServices(){
+        const data = await axios.get(`${NV_DMV_BASE_URL}/rest/schedule/appointmentProfiles/`);
 
+        return data;
    }
 
-   async getServiceTimes(branchId, date){
-        //
+   async getServiceTimes(branchId, date, serviceId){
+        const times = axios.get(`${NV_DMV_BASE_URL}/rest/schedule/branches/${branchId}/dates/${date}/times;servicePublicId=${serviceId};customSlotLength=30`)
    }
 
-   // async fillAppointmentDetails(details){
-   //      try{
-   //          details.
-   //      }
-   // }
+   async getBranchesWithServicesAndTimes(serviceList, days){
+        let formattedData = [];
+       // for each branch group make an api call for the times for the respective service
+       let branchList = await axios.get(`${NV_DMV_BASE_URL}/rest/schedule/branches/available`);
+       branchList = branchList.data
 
+       for(let branchIndex = 0; branchIndex < branchList.length; branchIndex++){
+           branchList[branchIndex].serviceList = [];
 
-    // resetForm
+           for(let serviceIndex = 0; serviceIndex < serviceList.length; serviceIndex++){
+               const dateEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branchList[branchIndex].id}/dates;servicePublicId=${serviceList[serviceIndex].publicId}`
 
-    // clickDate(array of dates in order of priority)
+               const datePromise = await axios.get(dateEndpoint)
 
-    // clickTime(? array of times)
+               serviceList[serviceIndex].dates = datePromise.data.slice(0, days);
+
+               for (let timeIndex = 0; timeIndex < serviceList[serviceIndex].dates.length; timeIndex++){
+                   const timeEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branchList[branchIndex].id}/dates/${serviceList[serviceIndex].dates[timeIndex].date}/times;servicePublicId=${serviceList[serviceIndex].publicId};customSlotLength=30`
+
+                   const timePromise = await axios.get(timeEndpoint)
+
+                   serviceList[serviceIndex].dates = timePromise.data
+               }
+
+               branchList[branchIndex].serviceList = [...branchList[branchIndex].serviceList, serviceList[serviceIndex]];
+
+               formattedData = [...formattedData, branchList[branchIndex]]
+           }
+       }
+
+       return formattedData;
+    }
 
     // fillAppointmentDetails
 

@@ -1,4 +1,4 @@
-export const LOCATION_MAP = {
+export const BRANCH_MAP = {
     'Carson City': '38abf745fb221cb833fb99e4076851a8086c13276a4465b57a4588b266aef11a',
     'Decatur': '29492a011eb6b5e1df1a1305049bf54615342fd03be179c47ee4d47fe7116409',
     'Flamingo': '289537bba97afd8bf69f4a3a727f52ad31d0c95ccba0e6d8140c4f1dfc582fca',

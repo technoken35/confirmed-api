@@ -1,19 +1,10 @@
-
-// loop through branches
-
-// store dates and times in memory
-
-// get user preferences date/time
-
-// click through form to book now that we have the best date
-
-// clean up and die
 import NevadaDmvApi from'./NevadaDmvApi.js'
 import * as http from 'http';
-import {NV_DMV_BASE_URL} from "./constants/index.js";
+import {BRANCH_MAP, NV_DMV_BASE_URL, SERVICE_MAP} from "./constants/index.js";
 import axios from "axios";
 import {sleep} from "./helpers/index.js";
 import * as Url from "url";
+
 const PORT = process.env.PORT || 7000;
 
 const server = http.createServer(async (req, res) => {
@@ -55,43 +46,46 @@ const server = http.createServer(async (req, res) => {
 
     if (req.url.includes('/api/nv/dmv/branches') && req.method === 'GET'){
         try{
-            const response = await axios.get(`${NV_DMV_BASE_URL}/rest/schedule/branches/available`);
             const queryObject = new Url.parse(req.url, true).query;
+            let serviceList = [];
+            const dmvApi = await new NevadaDmvApi();
 
-            let services = [];
             if (queryObject.services){
-                foreach(queryObject.)
+                let branchesWithServices = await dmvApi.getBranchesWithServices();
+                // arbitrarily grab the services from the Decatur branch
+                serviceList = branchesWithServices.data.filter((serviceGroups) => serviceGroups.branchPublicId === BRANCH_MAP['Decatur'])
+
+                // branch -> service groups -> services
+                // the service groups and services are duplicated throughout each branch
+                serviceList = serviceList[0].serviceGroups[0].services;
             }
 
-            console.log(queryObject, 'queryObject');
+            if (queryObject.serviceIds){
+                let requestedServiceIds = queryObject.serviceIds.split(',');
+
+                // TODO refactor into something more elegant
+                serviceList = serviceList.filter((service) => requestedServiceIds.includes(service.publicId));
+
+                console.log('serviceList', serviceList)
+            }
+
+            let days = queryObject.days || 2;
+
+            const formattedData = await dmvApi.getBranchesWithServicesAndTimes(serviceList, days)
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(response.data));
+            res.end(JSON.stringify(formattedData));
         }catch(e){
             console.warn(e)
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({'message': `An error has occurred: ${e.message}`}));
         }
     }
 
-    // get all branches with services and timeslots
-
-    // getSoonestTimeSlot
-
-    // getPreferredTimeSlot
-
-    // If no route present
     else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ message: 'Route not found' }));
     }
-
-    // // step 1
-    // const branchSelected = await dmvApi.clickBranch('Flamingo');
-    // // step 2
-    // const serviceSelected = await dmvApi.clickService('Drivers License  - New');
-    // // step 3
-    // await dmvApi.clickElementByText('Select date and time')
-    //
-    // await dmvApi.getSoonestAppointment();
 });
 
 server.listen(PORT, () => {
