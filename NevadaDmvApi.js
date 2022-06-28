@@ -21,7 +21,7 @@ export default class NevadaDmvApi {
     async getElementByText(string){
         return this.driver.wait(until.elementLocated(By.xpath(`//*[text()='${string}']`)), 20000, 'Timed out after 20 seconds.', 4000)
     }
-    
+
     async clickElementByText(string){
         try {
             // const element = this.driver.findElement(By.xpath(`//*[text()='${string}']`));
@@ -102,102 +102,6 @@ export default class NevadaDmvApi {
         }
    }
 
-   async getSoonestAppointment(month = null){
-       let dt = new Date();
-
-       if (!month){
-           month = dt.getMonth();
-       }
-
-       let year = dt.getFullYear();
-       const daysInMonth = new Date(year, month, 0).getDate();
-
-       let today = new Date().getDate();
-
-       console.log(daysInMonth)
-
-       let counter = 0;
-       let dateFound = null;
-       let timeSlots = [];
-       loop1:
-       while (counter !== 3 || !dateFound){
-           console.log('month count', counter);
-           for(let i = today; i < daysInMonth; i++){
-               timeSlots = await this.clickDay(i);
-
-               console.log('attempting to click another day', counter);
-
-               if(timeSlots.length > 0){
-                   try{
-                       await timeSlots[0].click();
-                   }catch (e){
-                       console.warn(e)
-
-                       timeSlots = null;
-
-                       continue;
-                   }
-
-                   // const timeSlotTakenErrors = await this.findByClassName('v-alert error');
-                   let nextStep = null;
-                   try{
-                       nextStep = await this.driver.wait(until.elementLocated(By.xpath(`//*[text()='${'Clear booking'}']`)));
-                   }catch (e){
-                       console.warn(e);
-
-                       // if we did not continue to the next step that means something is still wrong, lets keep going
-                       continue;
-                   }
-
-                   if (nextStep){
-                       dateFound = i;
-
-                       console.log('date found', dateFound)
-
-                       break loop1;
-                   }
-               }
-
-               await sleep(1000);
-           }
-
-           if (month === 12){
-               month = 0;
-           }
-
-           month++;
-           counter++;
-           today = 1;
-
-           await this.getNextMonth();
-
-           //wait for the next month sliding animation to finish
-           await sleep(2000);
-       }
-
-
-       if (dateFound){
-           timeSlots[0].click();
-       }
-       // console.log(dateSelected, 'date found');
-       //
-       // await dateSelected.click();
-
-       return dateFound;
-   }
-
-   async getNextMonth(){
-        try{
-            await this.clickElementByText('chevron_right');
-
-            return true;
-        }catch (e) {
-            console.error(e);
-
-            return false;
-        }
-   }
-
    async getCookies(){
        return await this.driver.manage().getCookies();
    }
@@ -228,13 +132,18 @@ export default class NevadaDmvApi {
 
                serviceList[serviceIndex].dates = datePromise.data.slice(0, days);
 
+               console.log(serviceList[serviceIndex].dates.length, branchList[branchIndex].name)
+
+               let dateTimes = [];
                for (let timeIndex = 0; timeIndex < serviceList[serviceIndex].dates.length; timeIndex++){
                    const timeEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branchList[branchIndex].id}/dates/${serviceList[serviceIndex].dates[timeIndex].date}/times;servicePublicId=${serviceList[serviceIndex].publicId};customSlotLength=30`
 
                    const timePromise = await axios.get(timeEndpoint)
 
-                   serviceList[serviceIndex].dates = timePromise.data
+                   dateTimes = [...dateTimes, ...timePromise.data]
                }
+
+               serviceList[serviceIndex].dates = dateTimes;
 
                branchList[branchIndex].serviceList = [...branchList[branchIndex].serviceList, serviceList[serviceIndex]];
 
@@ -244,6 +153,42 @@ export default class NevadaDmvApi {
 
        return formattedData;
     }
+
+    async getSoonestAppointment(service, metro){
+        let branches = await this.getBranchesWithServicesAndTimes([{publicId: service}], 2);
+
+        // todo refactor this BS lol
+        if (metro === 'vegas'){
+           branches = branches.filter(branch => !(branch.name.includes('Reno') || branch.name.includes('Carson')));
+        }
+
+        if(metro === 'reno'){
+           branches = branches.filter(branch => (branch.name.includes('Reno') || branch.name.includes('Carson')));
+        }
+
+        let soonestAppointment = null;
+        let soonestAppointmentDate = null;
+
+        for(let branchIndex = 0; branchIndex < branches.length; branchIndex++) {
+            // appointment is already sorted
+            let soonestAppointmentForBranch = branches[branchIndex].serviceList[0].dates[0];
+            let [hour, minute] = soonestAppointmentForBranch.time.split(':');
+            let soonestAppointmentDateForBranch = new Date(soonestAppointmentForBranch.date).setHours(hour, minute);
+
+            if (!soonestAppointmentDate || soonestAppointmentDateForBranch > soonestAppointmentDate) {
+                soonestAppointment = {branch: branches[branchIndex]};
+                soonestAppointmentDate = soonestAppointmentForBranch
+            }
+
+            console.log(soonestAppointment, 'soonestAppointment');
+             // we only need the first one
+
+            branches[branchIndex].serviceList[0].dates = branches[branchIndex].serviceList[0].dates.splice(0, 1);
+        }
+
+       return soonestAppointment;
+    }
+
 
     // fillAppointmentDetails
 

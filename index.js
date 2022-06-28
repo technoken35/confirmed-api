@@ -69,7 +69,7 @@ const server = http.createServer(async (req, res) => {
                 console.log('serviceList', serviceList)
             }
 
-            let days = queryObject.days || 2;
+            let days = queryObject.days || 4;
 
             const formattedData = await dmvApi.getBranchesWithServicesAndTimes(serviceList, days)
 
@@ -77,6 +77,32 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify(formattedData));
         }catch(e){
             console.warn(e)
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({'message': `An error has occurred: ${e.message}`}));
+        }
+    }
+
+    if (req.url.includes('/api/nv/dmv/soonest') && req.method === 'GET'){
+        const queryObject = new Url.parse(req.url, true).query;
+
+        try{
+            if (!queryObject.serviceId){
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({message: 'No service specified'}))
+
+                return;
+            }
+
+            if (queryObject.metro){
+                queryObject.metro = 'vegas';
+            }
+
+            const soonestAppointment = await new NevadaDmvApi().getSoonestAppointment(queryObject.serviceId, queryObject.metro)
+            console.log(soonestAppointment, 'soonest appointment returned')
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(soonestAppointment));
+        }catch(e){
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({'message': `An error has occurred: ${e.message}`}));
         }

@@ -10,9 +10,9 @@ export const BRANCH_MAP = {
 export const SERVICE_MAP = {
     'ADA': 'efbf5a37b9bf875b16df9f83e42186362dfd37182f384444caa4872565a9cd05',
     'Drivers License  - Renewal': '617e91451c0e5e5fd3d304f887f6429d2e899ead68dd47814fb641fa74054ee4',
-    'Drivers License  - New': 'cf8b8007166313cc8952c9c5a2dfbeed9875666caf43c9acdb675a1cbb16e598',
+    'Drivers License  - New': '',
     'Knowledge/ Written Testing': 'f6eca624642da214ca999d363c907e11b3d6b553adff3076b4954389149dfc08',
-    'License Plate Pickup\Dropoff': 'ddcae2e7df8f2170b87d2be96cc4667dbb8dbf284b63621f3db4371cfae0d9ce',
+    'License Plate Pickup\Dropoff': 'ddcae2e7df8f2170b87d2be96cc4667dbb8dbf284b63621f3db4371cfcf8b8007166313cc8952c9c5a2dfbeed9875666caf43c9acdb675a1cbb16e598ae0d9ce',
     'Multiple Transactions (DL & Registration)': '0682a788f56c3d8966b57aa604173a2d4043994f313e14b679d59878c985228a',
     'Registration - New': 'a8a535e55c3929b4e43679c32d8d3e60aba06b2768e61faa5af5bf364d28025d',
     'Registration - Title': 'cb67e9cf52f1573bc100e52b2dc9d0d72f0897758bcde3ac7696f839e1fecec9',
