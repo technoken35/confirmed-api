@@ -21,3 +21,5 @@ export const SERVICE_MAP = {
 }
 
 export const NV_DMV_BASE_URL = 'https://dmvapp.nv.gov/qmaticwebbooking'
+
+export const NV_DMV_COOKIE_NAME = 'JSESSIONID';
