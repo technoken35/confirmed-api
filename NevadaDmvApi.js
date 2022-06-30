@@ -4,11 +4,10 @@ import {sleep} from "./helpers/index.js";
 import axios from "axios";
 
 export default class NevadaDmvApi {
-
     user = {
-        firstName: 'Kendall',
-        lastName: 'Hayes',
-        email: 'hayeskendall21@gmail.com',
+        firstName: 'Bill',
+        lastName: 'Johnson',
+        email: 'confirmedapp333@gmail.com',
         phone: 6082123334,
         searches: [{'serviceId': 2, 'branchId': 4, date:{date: '2022-08-20', time: '10:45'}, status: ''}],
         currentAppointment: {
@@ -242,7 +241,7 @@ export default class NevadaDmvApi {
         const reservationEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branch.publicId || branch.id}/dates/${service.dates[0].date}/times/${service.dates[0].time}/reserve;customSlotLength=30`;
 
         console.log(reservationEndpoint, 'reservationEndpoint');
-        const peopleServices = [{
+        let peopleServices = [{
             publicId: service.publicId,
             qpId: service.qpId,
             adult: 1,
@@ -268,41 +267,39 @@ export default class NevadaDmvApi {
         const token = await this.getAuthToken();
         const headers = {Cookie: `${NV_DMV_COOKIE_NAME}=${token}`, Accept: '*/*', Connection: 'keep-alive', 'Content-Type': 'application/json'};
 
-        // return  [reservationPayload];
-
-        console.log('before reserve appointment');
-        let reserveAppointmentRequest = {};
-        try{
-            const reserveAppointmentRequest = await axios.post(reservationEndpoint, reservationPayload, {headers});
-            console.log(reserveAppointmentRequest, 'reserveAppointmentRequest')
-            return [reserveAppointmentRequest.data, reservationPayload, reserveAppointmentRequest.headers, headers];
-        }catch (e){
-            return e;
-        }
+        const reserveAppointmentRequest = await axios.post(reservationEndpoint, reservationPayload, {headers});
 
         // we could not reserve the appointment get out
-        if (reserveAppointmentRequest.status < 200){
+        if (reserveAppointmentRequest.status > 400 || reserveAppointmentRequest.data.hasOwnProperty('errorMessage')){
             console.log(reserveAppointmentRequest.data, 'failed to reserve appointment')
             return null;
         }
 
+        console.log(reserveAppointmentRequest.data, 'reservation appointment request data');
+
         // save the reservation id to confirm the appointment
         const reservationId = reserveAppointmentRequest.data.publicId;
+
+        peopleServices.totalCost = 0;
+        peopleServices.createdByUser = 'Qmatic Web Booking';
+        peopleServices.customSlotLength = 30;
 
         const confirmationPayload = {
             customer: {
                 firstName: user.firstName,
                 lastName: user.lastName,
+                dateOfBirth: '',
                 email: user.email,
-                phone: user.phone,
-                languageCode: 'en',
-                captcha: '',
+                phone: `${user.phone}`,
                 dob: '',
                 externalId: '',
-                custom: JSON.stringify({peopleServices}),
-                notes: '',
-                title: 'Qmatic Web Booking'
-            }
+            },
+            languageCode: 'en',
+            notificationType: '',
+            captcha: '',
+            custom: JSON.stringify({peopleServices}),
+            notes: '',
+            title: 'Qmatic Web Booking'
         }
 
         // finally, lets book the appointment (:
@@ -310,7 +307,7 @@ export default class NevadaDmvApi {
 
         console.log(confirmationEndpoint, confirmationPayload, 'before confirmation')
 
-        return confirmationPayload;
+        // return confirmationPayload;
 
         const confirmationRequest = await axios.post(confirmationEndpoint, confirmationPayload, {headers})
 
