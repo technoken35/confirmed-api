@@ -6,9 +6,9 @@ import axios from "axios";
 export default class NevadaDmvApi {
 
     user = {
-        firstName: 'Foo',
-        lastName: 'Bar',
-        email: 'hayeskendall213@gmail.com',
+        firstName: 'Kendall',
+        lastName: 'Hayes',
+        email: 'hayeskendall21@gmail.com',
         phone: 6082123334,
         searches: [{'serviceId': 2, 'branchId': 4, date:{date: '2022-08-20', time: '10:45'}, status: ''}],
         currentAppointment: {
@@ -32,10 +32,6 @@ export default class NevadaDmvApi {
     async init() {
         this.driver = await new Builder().forBrowser(Browser.CHROME).build();
         await this.driver.get(`${NV_DMV_BASE_URL}/`);
-
-        const cookies = await this.getCookies();
-
-        console.log('COOKEs', cookies);
     }
 
     async cleanup() {
@@ -127,7 +123,14 @@ export default class NevadaDmvApi {
    }
 
    async getCookies(){
-       return await this.driver.manage().getCookies();
+        await this.init();
+       const cookies = await this.driver.manage().getCookies();
+
+       await this.cleanup();
+
+       console.log(cookies)
+
+       return cookies;
    }
 
    async getBranchesWithServices(){
@@ -141,44 +144,47 @@ export default class NevadaDmvApi {
    }
 
    async getBranchesWithServicesAndTimes(serviceList, days){
-        let formattedData = [];
        // for each branch group make an api call for the times for the respective service
        let branchList = await axios.get(`${NV_DMV_BASE_URL}/rest/schedule/branches/available`);
        branchList = branchList.data
+       let formattedBranchList = [];
 
+       //branches and times are getting out of sync, hence the bad request. Seems like we're using the soonest appointment for carson city but returning the decatur branch
+       // think it had something to do with just copying the reference of an object vs cloning an object
        for(let branchIndex = 0; branchIndex < branchList.length; branchIndex++){
-           branchList[branchIndex].serviceList = [];
+           let formattedBranchObject = {...branchList[branchIndex]};
+           let formattedServiceList = [];
 
            for(let serviceIndex = 0; serviceIndex < serviceList.length; serviceIndex++){
-               const dateEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branchList[branchIndex].id}/dates;servicePublicId=${serviceList[serviceIndex].publicId}`
-
+               let formattedServiceObject = {...serviceList[serviceIndex]};
+               let dateTimes = [];
+               const dateEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${formattedBranchObject.id}/dates;servicePublicId=${formattedServiceObject.publicId}`
                const datePromise = await axios.get(dateEndpoint)
 
-               serviceList[serviceIndex].dates = datePromise.data.slice(0, days);
+               let serviceDates = datePromise.data.slice(0, days);
 
-               console.log(serviceList[serviceIndex].dates.length, branchList[branchIndex].name)
-
-               let dateTimes = [];
-               for (let timeIndex = 0; timeIndex < serviceList[serviceIndex].dates.length; timeIndex++){
-                   const timeEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branchList[branchIndex].id}/dates/${serviceList[serviceIndex].dates[timeIndex].date}/times;servicePublicId=${serviceList[serviceIndex].publicId};customSlotLength=30`
+               for (let timeIndex = 0; timeIndex < serviceDates.length; timeIndex++){
+                   const timeEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${formattedBranchObject.id}/dates/${serviceDates[timeIndex].date}/times;servicePublicId=${formattedServiceObject.publicId};customSlotLength=30`
+                   console.log(timeEndpoint);
 
                    const timePromise = await axios.get(timeEndpoint)
 
                    dateTimes = [...dateTimes, ...timePromise.data]
                }
 
-               serviceList[serviceIndex].dates = dateTimes;
-
-               branchList[branchIndex].serviceList = [...branchList[branchIndex].serviceList, serviceList[serviceIndex]];
-
-               formattedData = [...formattedData, branchList[branchIndex]]
+               formattedServiceObject.dates = dateTimes
+               formattedServiceList.push(formattedServiceObject);
            }
+
+           formattedBranchObject.serviceList = formattedServiceList;
+
+           formattedBranchList.push(formattedBranchObject);
        }
 
-       return formattedData;
+       return formattedBranchList;
     }
 
-    async getSoonestAppointment(service, metro){
+    async getSoonestAppointment(service, metro = 'vegas'){
         let branches = await this.getBranchesWithServicesAndTimes([{publicId: service}], 2);
 
         // todo refactor this BS lol
@@ -199,14 +205,13 @@ export default class NevadaDmvApi {
             let [hour, minute] = soonestAppointmentForBranch.time.split(':');
             let soonestAppointmentDateForBranch = new Date(soonestAppointmentForBranch.date).setHours(hour, minute);
 
-            if (!soonestAppointmentDate || soonestAppointmentDateForBranch > soonestAppointmentDate) {
+            if (!soonestAppointmentDate || soonestAppointmentDateForBranch < soonestAppointmentDate) {
                 soonestAppointment = {branch: branches[branchIndex]};
-                soonestAppointmentDate = soonestAppointmentForBranch
+                soonestAppointmentDate = soonestAppointmentDateForBranch
             }
 
-            console.log(soonestAppointment, 'soonestAppointment');
-             // we only need the first one
-            branches[branchIndex].serviceList[0].dates = branches[branchIndex].serviceList[0].dates.splice(0, 1);
+            console.log('soonestAppointmentDate', soonestAppointmentDate);
+            console.log('soonestAppointment', soonestAppointmentDateForBranch);
         }
 
        return soonestAppointment;
@@ -214,8 +219,6 @@ export default class NevadaDmvApi {
 
     async bookSoonestAppointment(service, metro, user = this.user){
        let soonestAppointment = await this.getSoonestAppointment(service, metro);
-
-
     }
 
     async bookAppointment(service, branch, user){
@@ -224,14 +227,24 @@ export default class NevadaDmvApi {
 
         const checkMultipleResponse = await axios.get(checkMultipleEndpoint);
 
+        console.log(checkMultipleResponse, 'checkMultiple');
+
         // user cannot book multiple of this type, get out
         if(checkMultipleResponse.data.message.includes('ERROR')){
            return null;
         }
 
         // make an attempt to reserve the slot before we create the appointment
-        const reservationEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branch.publicId}/dates/${service.dates[0].date}/times/${service.dates[0].time}/reserve;customSlotLength=30`;
-        const peopleServices = {};
+        const reservationEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branch.publicId || branch.id}/dates/${service.dates[0].date}/times/${service.dates[0].time}/reserve;customSlotLength=15`;
+
+        console.log(reservationEndpoint, 'reservationEndpoint');
+        const peopleServices = [{
+            publicId: service.publicId,
+            qpId: service.qpId,
+            adult: 1,
+            name: service.name,
+            child: 0
+        }];
 
         // crazy data structure
         const reservationPayload = {
@@ -240,32 +253,36 @@ export default class NevadaDmvApi {
                   publicId: service.publicId
               }
             ],
-            custom: JSON.stringify({
-                peopleServices: [{
-                    publicId: service.publicId,
-                    qpId: service.qpId,
-                    adult: 1,
-                    name: service.name,
-                    child: 0
-                }]
-            }),
+            custom: {peopleServices},
+            // custom: JSON.stringify({peopleServices}),
         };
+
+        // return reservationPayload;
 
         // get the cookie using the selenium webdriver because we need javascript to be enabled in order to get a valid cookie
 
         const token = await this.getAuthToken();
-        
-        const reserveAppointmentRequest = await axios.post(reservationEndpoint, reservationEndpoint, {
-            headers:{'Cookie': `${NV_DMV_COOKIE_NAME}=${token}`}
-        });
+        const headers = {'Cookie': `${NV_DMV_COOKIE_NAME}=${token}`, 'Host': 'dmvapp.nv.gov'};
+
+        // return  [reservationPayload];
+
+        console.log('before reserve appointment');
+        let reserveAppointmentRequest = {};
+        try{
+            const reserveAppointmentRequest = await axios.post(reservationEndpoint, reservationPayload, {headers});
+            console.log(reserveAppointmentRequest, 'reserveAppointmentRequest')
+            return [reserveAppointmentRequest.data, reservationPayload];
+        }catch (e){
+            return e;
+        }
 
         // we could not reserve the appointment get out
         if (reserveAppointmentRequest.status < 200){
+            console.log(reserveAppointmentRequest.data, 'failed to reserve appointment')
             return null;
         }
 
         // save the reservation id to confirm the appointment
-
         const reservationId = reserveAppointmentRequest.data.publicId;
 
         const confirmationPayload = {
@@ -278,23 +295,37 @@ export default class NevadaDmvApi {
                 captcha: '',
                 dob: '',
                 externalId: '',
-                custom: JSON.stringify([]),
+                custom: JSON.stringify({peopleServices}),
                 notes: '',
                 title: 'Qmatic Web Booking'
             }
         }
 
         // finally, lets book the appointment (:
-
         const confirmationEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/appointments/${reservationId}/confirm`;
 
-        const confirmationRequest = await axios.post(confirmationEndpoint, app)
+        console.log(confirmationEndpoint, confirmationPayload, 'before confirmation')
+
+        return confirmationPayload;
+
+        const confirmationRequest = await axios.post(confirmationEndpoint, confirmationPayload, {headers})
+
+        console.log(confirmationRequest, 'confirmationRequest')
+
+        return confirmationRequest.data;
     }
 
     async getAuthToken() {
         const cookies = await this.getCookies();
 
         return cookies.filter((cookie) => cookie.name === NV_DMV_COOKIE_NAME)[0].value;
+    }
+
+    async getServices(){
+        const servicesUrl = `${NV_DMV_BASE_URL}/rest/schedule/branches/${BRANCH_MAP['Decatur']}/services`
+        const services = await axios.get(servicesUrl);
+
+        return services.data;
     }
 
     // async getPrefferredAppointment(service, times){

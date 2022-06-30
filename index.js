@@ -2,7 +2,7 @@ import NevadaDmvApi from'./NevadaDmvApi.js'
 import * as http from 'http';
 import {BRANCH_MAP, NV_DMV_BASE_URL, SERVICE_MAP} from "./constants/index.js";
 import axios from "axios";
-import {sleep} from "./helpers/index.js";
+import {getRequestData, sleep} from "./helpers/index.js";
 import * as Url from "url";
 
 const PORT = process.env.PORT || 7000;
@@ -69,7 +69,7 @@ const server = http.createServer(async (req, res) => {
                 console.log('serviceList', serviceList)
             }
 
-            let days = queryObject.days || 4;
+            let days = Number(queryObject.days) || 2;
 
             const formattedData = await dmvApi.getBranchesWithServicesAndTimes(serviceList, days)
 
@@ -93,10 +93,6 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            if (queryObject.metro){
-                queryObject.metro = 'vegas';
-            }
-
             const soonestAppointment = await new NevadaDmvApi().getSoonestAppointment(queryObject.serviceId, queryObject.metro)
             console.log(soonestAppointment, 'soonest appointment returned')
 
@@ -107,6 +103,27 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({'message': `An error has occurred: ${e.message}`}));
         }
     }
+
+    if (req.url.includes('/api/nv/dmv/book') && req.method === 'POST'){
+        try{
+            let requestPayload = await getRequestData(req);
+            requestPayload = JSON.parse(requestPayload);
+            const nevadaDmvApi = new NevadaDmvApi();
+            const services = await nevadaDmvApi.getServices();
+            let requestedService = services.filter((service) => service.publicId === requestPayload.branch.serviceList[0].publicId)[0];
+            requestedService.dates = requestPayload.branch.serviceList[0].dates;
+
+            const appointment = await new NevadaDmvApi().bookAppointment(requestedService, requestPayload.branch, nevadaDmvApi.user)
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(appointment));
+        }catch(e){
+            console.log(e);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({'message': `An error has occurred: ${e.message}`, trace: e.stack}));
+        }
+    }
+
 
     else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
