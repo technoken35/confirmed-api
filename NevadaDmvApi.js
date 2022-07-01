@@ -210,9 +210,6 @@ export default class NevadaDmvApi {
             }
 
             branches[branchIndex].serviceList[0].dates = branches[branchIndex].serviceList[0].dates.splice(0,1)
-
-            console.log('soonestAppointmentDate', soonestAppointmentDate);
-            console.log('soonestAppointment', soonestAppointmentDateForBranch);
         }
 
        return soonestAppointment;
@@ -220,6 +217,16 @@ export default class NevadaDmvApi {
 
     async bookSoonestAppointment(service, metro, user = this.user){
        let soonestAppointment = await this.getSoonestAppointment(service, metro);
+       let services = await this.getServices();
+
+       // refactor this not getting the full service object back from get soonest appointment for some reason
+       let fullServiceObject = services.filter((fullService) => fullService.publicId === service)[0];
+
+       fullServiceObject = {...fullServiceObject, ...soonestAppointment.branch.serviceList[0]}
+
+       let appointment = await this.bookAppointment(fullServiceObject, soonestAppointment.branch, this.user);
+
+       return appointment;
     }
 
     async bookAppointment(service, branch, user){
@@ -236,7 +243,6 @@ export default class NevadaDmvApi {
         }
 
         // there is a mapping between the service and the slot length, need use the correct slot length in order to reserve
-
         // make an attempt to reserve the slot before we create the appointment
         const reservationEndpoint = `${NV_DMV_BASE_URL}/rest/schedule/branches/${branch.publicId || branch.id}/dates/${service.dates[0].date}/times/${service.dates[0].time}/reserve;customSlotLength=30`;
 

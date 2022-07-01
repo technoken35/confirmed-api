@@ -104,6 +104,25 @@ const server = http.createServer(async (req, res) => {
         }
     }
 
+    if (req.url === '/api/nv/dmv/book/soonest' && req.method === 'POST'){
+        try{
+            let requestPayload = await getRequestData(req);
+            requestPayload = JSON.parse(requestPayload);
+            const nevadaDmvApi = new NevadaDmvApi();
+            const services = await nevadaDmvApi.getServices();
+
+            const appointment = await new NevadaDmvApi().bookSoonestAppointment(requestPayload.service.publicId, 'vegas', nevadaDmvApi.user)
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(appointment));
+        }catch(e){
+            console.log(e);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({'message': `An error has occurred: ${e.message}`, trace: e.stack}));
+        }
+    }
+
+
     if (req.url.includes('/api/nv/dmv/book') && req.method === 'POST'){
         try{
             let requestPayload = await getRequestData(req);
@@ -123,7 +142,6 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({'message': `An error has occurred: ${e.message}`, trace: e.stack}));
         }
     }
-
 
     else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
