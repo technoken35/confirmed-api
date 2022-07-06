@@ -7,6 +7,13 @@ import * as Url from "url";
 
 const PORT = process.env.PORT || 7000;
 
+const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "OPTIONS, POST, GET",
+    "Access-Control-Max-Age": 2592000, // 30 days
+    /** add other headers as per requirement */
+};
+
 const server = http.createServer(async (req, res) => {
     //set the request route
     if (req.url === '/api' && req.method === 'GET') {
@@ -96,11 +103,13 @@ const server = http.createServer(async (req, res) => {
             const soonestAppointment = await new NevadaDmvApi().getSoonestAppointment(queryObject.serviceId, queryObject.metro)
             console.log(soonestAppointment, 'soonest appointment returned')
 
-            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.writeHead(200, headers);
             res.end(JSON.stringify(soonestAppointment));
         }catch(e){
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({'message': `An error has occurred: ${e.message}`}));
+        }finally {
+            return;
         }
     }
 
@@ -149,6 +158,9 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
-server.listen(PORT, () => {
-    console.log(`server started on port: ${PORT}`);
+server.listen(8080, async () => {
+    let api = new NevadaDmvApi();
+    await api.init();
+    // console.log(process.env)
+    console.log(`server started on portyyy: ${PORT}`);
 });

@@ -1,14 +1,30 @@
 version: '3.8'
 services:
+  selenium:
+    container_name: selenium
+    image: selenium/node-chrome
+    restart: always
+    networks:
+      - confirmed
+    ports:
+      - "4444:4444"
+    expose:
+      - 4444
   web:
+    container_name: web
+    networks:
+      - confirmed
     build:
       context: ./
       target: dev
     volumes:
-      - .:/src
+      - .:/usr/src/app
     command: npm run start
     ports:
       - "80:80"
     environment:
       NODE_ENV: development
-      DEBUG: nodejs-docker-express:*
+      DEBUG: nodejs-docker-express:*z
+networks:
+  confirmed:
+    name: confirmed

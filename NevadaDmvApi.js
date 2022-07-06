@@ -29,7 +29,8 @@ export default class NevadaDmvApi {
     }
 
     async init() {
-        this.driver = await new Builder().forBrowser(Browser.CHROME).build();
+        // https://kendallhayes_Lu4ScO:zpTuLGAjpHrjSzURBt9Y@hub.browserstack.com/wd/hub
+        this.driver = await new Builder().usingServer(`https://kendallhayes_Lu4ScO:zpTuLGAjpHrjSzURBt9Y@hub.browserstack.com/wd/hub`).forBrowser(Browser.CHROME).build();
         await this.driver.get(`${NV_DMV_BASE_URL}/`);
     }
 
