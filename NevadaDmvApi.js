@@ -185,7 +185,9 @@ export default class NevadaDmvApi {
     }
 
     async getSoonestAppointment(service, metro = 'vegas'){
-        let branches = await this.getBranchesWithServicesAndTimes([{publicId: service}], 2);
+        let services = await this.getServices();
+        let serviceObjs = services.filter((serviceItem) => serviceItem.publicId === service);
+        let branches = await this.getBranchesWithServicesAndTimes(serviceObjs, 2);
 
         // todo refactor this BS lol
         if (metro === 'vegas'){
