@@ -8,8 +8,12 @@ import bodyParser from "body-parser"
 import {getRequestData, sleep} from "./helpers/index.js";
 import * as Url from "url";
 import {error} from "selenium-webdriver";
+import dotenv from 'dotenv';
+
+dotenv.config()
 
 const PORT = process.env.PORT || 7000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 const app = express();
 app.use(cors());
@@ -127,6 +131,6 @@ app.post('/api/nv/dmv/book', async function (req, res, next) {
     }
 });
 
-app.listen(8080, async () => {
-    console.log(`server started on portyyy: ${PORT}`);
+app.listen(PORT, HOST,async () => {
+    console.log(`server started on portyyy: ${process.env.PORT}`);
 });
