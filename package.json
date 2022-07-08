@@ -9,6 +9,8 @@
     "start": "nodemon index.js"
   },
   "dependencies": {
+    "@sentry/node": "^7.5.1",
+    "@sentry/tracing": "^7.5.1",
     "axios": "^0.27.2",
     "chromium": "^3.0.3",
     "co": "^4.6.0",

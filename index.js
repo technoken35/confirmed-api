@@ -21,6 +21,23 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.raw());
 
+import * as Sentry from "@sentry/node";
+
+// Importing @sentry/tracing patches the global hub for tracing to work.
+import "@sentry/tracing";
+
+// If you want to use `@sentry/tracing` in your project directly, use a named import instead:
+// import * as SentryTracing from "@sentry/tracing"
+// Unused named imports are not guaranteed to patch the global hub.
+Sentry.init({
+    dsn: "https://5732fafa0a714a2abab4dd9e06bd0c40@o1309933.ingest.sentry.io/6556654",
+
+    // Set tracesSampleRate to 1.0 to capture 100%
+    // of transactions for performance monitoring.
+    // We recommend adjusting this value in production
+    tracesSampleRate: 1.0,
+});
+
 app.get('/', function(req, res, next){
    res.json({foo:'bar'});
 });
