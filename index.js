@@ -21,6 +21,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.raw());
 
+app.get('/', function(req, res, next){
+   res.json({foo:'bar'});
+});
+
 //set the request route
 app.get('/api', function (req,res, next) {
     res.json('Hi there');
