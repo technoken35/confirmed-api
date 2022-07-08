@@ -42,7 +42,6 @@ app.get('/', function(req, res, next){
    res.json({foo:'bar'});
 });
 
-//set the request route
 app.get('/api', function (req,res, next) {
     res.json('Hi there');
 });
@@ -112,8 +111,6 @@ app.get('/api/nv/dmv/soonest', async function (req, res, next) {
 });
 
 app.post('/api/nv/dmv/book/soonest', async function (req, res, next) {
-    console.log('trying to book 1')
-
     try {
         const nevadaDmvApi = new NevadaDmvApi();
         // const services = await nevadaDmvApi.getServices();
@@ -133,22 +130,24 @@ app.post('/api/nv/dmv/book/soonest', async function (req, res, next) {
 })
 
 app.post('/api/nv/dmv/book', async function (req, res, next) {
-    console.log('trying to book')
-
     try {
-        console.log(req.body, 'body');
-
         const nevadaDmvApi = new NevadaDmvApi();
         const services = await nevadaDmvApi.getServices();
         let requestedService = services.filter((service) => service.publicId === req.body.branch.serviceList[0].publicId)[0];
         requestedService.dates = req.body.branch.serviceList[0].dates;
 
-        const appointment = await new NevadaDmvApi().bookAppointment(requestedService, req.body.branch, req.body.user)
+        const appointment = await new NevadaDmvApi().bookAppointment(requestedService, req.body.branch, req.body.user);
+
+        if (appointment.error){
+            res.status(400);
+        }
 
         res.json(appointment);
     } catch (e) {
         console.log(e);
-        // res.json({error: e});
+        res.status(400);
+
+        res.json({error: e});
     }
 });
 

@@ -1,4 +1,4 @@
-import {Browser, Builder, By, until} from 'selenium-webdriver';
+import {Browser, Builder, By, error, until} from 'selenium-webdriver';
 import {BRANCH_MAP, NV_DMV_BASE_URL, NV_DMV_COOKIE_NAME, SERVICE_MAP} from "./constants/index.js";
 import {sleep} from "./helpers/index.js";
 import axios from "axios";
@@ -242,7 +242,7 @@ export default class NevadaDmvApi {
 
         // user cannot book multiple of this type, get out
         if(checkMultipleResponse.data.message.includes('ERROR')){
-           return null;
+           return {error: {message: 'You have another appointment. Use the DMV website to cancel your current appointment and try again. https://dmvapp.nv.gov/qmaticwebbooking'}};
         }
 
         // there is a mapping between the service and the slot length, need use the correct slot length in order to reserve
@@ -280,8 +280,8 @@ export default class NevadaDmvApi {
 
         // we could not reserve the appointment get out
         if (reserveAppointmentRequest.status > 400 || reserveAppointmentRequest.data.hasOwnProperty('errorMessage')){
-            console.log(reserveAppointmentRequest.data, 'failed to reserve appointment')
-            return null;
+            console.error(reserveAppointmentRequest.data)
+            return {error: {message: 'Appointment is already reserved. Please select another time.'}};
         }
 
         console.log(reserveAppointmentRequest.data, 'reservation appointment request data');
@@ -318,11 +318,17 @@ export default class NevadaDmvApi {
 
         // return confirmationPayload;
 
-        const confirmationRequest = await axios.post(confirmationEndpoint, confirmationPayload, {headers})
+        try{
+            const confirmationRequest = await axios.post(confirmationEndpoint, confirmationPayload, {headers});
 
-        console.log(confirmationRequest, 'confirmationRequest')
+            console.log(confirmationRequest, 'confirmationRequest')
 
-        return confirmationRequest.data;
+            return confirmationRequest.data;
+        }catch (e) {
+            console.error(e);
+
+            return {error: e}
+        }
     }
 
     async getAuthToken() {
