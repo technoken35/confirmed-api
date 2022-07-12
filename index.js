@@ -42,6 +42,18 @@ app.get('/', function(req, res, next){
    res.json({foo:'bar'});
 });
 
+app.get('/api/nv/dmv/health-check', async function (req, res, next) {
+    const data = await new NevadaDmvApi().healthCheck();
+
+    if (data.error){
+        res.status(400)
+    }else{
+        res.status(200);
+    }
+
+    res.json(data);
+});
+
 app.get('/api', function (req,res, next) {
     res.json('Hi there');
 });
@@ -130,6 +142,8 @@ app.post('/api/nv/dmv/book/soonest', async function (req, res, next) {
 })
 
 app.post('/api/nv/dmv/book', async function (req, res, next) {
+    console.log('trying to book')
+
     try {
         const nevadaDmvApi = new NevadaDmvApi();
         const services = await nevadaDmvApi.getServices();
@@ -145,7 +159,7 @@ app.post('/api/nv/dmv/book', async function (req, res, next) {
         res.json(appointment);
     } catch (e) {
         console.log(e);
-        res.status(400);
+        res.status(400)
 
         res.json({error: e});
     }

@@ -140,7 +140,7 @@ export default class NevadaDmvApi {
    }
 
    async getServiceTimes(branchId, date, serviceId){
-        const times = axios.get(`${NV_DMV_BASE_URL}/rest/schedule/branches/${branchId}/dates/${date}/times;servicePublicId=${serviceId};customSlotLength=30`)
+        const times = axios.get(`${NV_DMV_BASE_URL}/rest/schedule/branches/${branchId}/dates/${date}/times;servicePublicId=${serviceId};customSlotLength=30`);
    }
 
    async getBranchesWithServicesAndTimes(serviceList, days){
@@ -342,6 +342,16 @@ export default class NevadaDmvApi {
         const services = await axios.get(servicesUrl);
 
         return services.data;
+    }
+
+    async healthCheck() {
+        const data = await this.getBranchesWithServices();
+
+        if (data.status < 300){
+            return {'foo': 'bar'}
+        }else{
+            return {'error': 'Online services are down.'}
+        }
     }
 
     // async getPrefferredAppointment(service, times){
