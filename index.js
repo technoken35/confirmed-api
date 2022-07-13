@@ -116,6 +116,10 @@ app.get('/api/nv/dmv/soonest', async function (req, res, next) {
         const soonestAppointment = await new NevadaDmvApi().getSoonestAppointment(queryObject.serviceId, queryObject.metro)
         console.log(soonestAppointment, 'soonest appointment returned')
 
+        if (soonestAppointment.hasOwnProperty('error')){
+            res.status(500);
+        }
+
         res.json(soonestAppointment);
     } catch (e) {
         res.status(500)
