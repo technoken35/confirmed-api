@@ -118,6 +118,7 @@ app.get('/api/nv/dmv/soonest', async function (req, res, next) {
 
         res.json(soonestAppointment);
     } catch (e) {
+        res.status(500)
         res.json({error: e});
     }
 });
