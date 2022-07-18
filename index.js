@@ -111,6 +111,8 @@ app.get('/api/nv/dmv/soonest', async function (req, res, next) {
     try {
         if (!queryObject.serviceId) {
             res.json({error: {'message': 'No service specified'}});
+
+            return;
         }
 
         const soonestAppointment = await new NevadaDmvApi().getSoonestAppointment(queryObject.serviceId, queryObject.metro)
